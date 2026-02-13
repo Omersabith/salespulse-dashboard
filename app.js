@@ -32,6 +32,8 @@ loginForm.addEventListener("submit", async (e) => {
   loadDashboard();
 });
 
+/* ---------------- SESSION CHECK ---------------- */
+
 async function checkSession() {
   const { data } = await supabase.auth.getSession();
 
@@ -44,6 +46,8 @@ async function checkSession() {
 
 checkSession();
 
+/* ---------------- LOGOUT ---------------- */
+
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await supabase.auth.signOut();
   location.reload();
@@ -52,7 +56,6 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 /* ---------------- FETCH DATA ---------------- */
 
 async function loadDashboard() {
-
   const { data, error } = await supabase
     .from("salespulse_payload")
     .select("content")
@@ -78,27 +81,34 @@ async function loadDashboard() {
   const execData = payload.executive_performance || [];
   const rawData = payload.raw_data || [];
 
-  console.log("FULL PAYLOAD:", payload);
   console.log("RAW DATA COUNT:", rawData.length);
 
+  // STORE MASTER DATA
   window.__RAW_DATA__ = rawData;
 
+  // POPULATE FILTERS
   populateFilters(rawData);
+
+  // INITIAL RENDER
   renderAll(kpi, categoryData, channelData, execData, rawData);
 }
 
-/* ---------------- FILTERING ---------------- */
+/* ---------------- FILTERS ---------------- */
 
 function populateFilters(data) {
-
   const channelSelect = document.getElementById("filterChannel");
   const partSelect = document.getElementById("filterPart");
 
   channelSelect.innerHTML = '<option value="">All Channels</option>';
   partSelect.innerHTML = '<option value="">All Parts</option>';
 
-  const channels = [...new Set(data.map(d => d["CHANNEL"]))].sort();
-  const parts = [...new Set(data.map(d => d["Part Number"]))].sort();
+  if (!Array.isArray(data)) {
+    console.error("RAW DATA IS NOT ARRAY");
+    return;
+  }
+
+  const channels = [...new Set(data.map(d => d.channel))].sort();
+  const parts = [...new Set(data.map(d => d.part_number))].sort();
 
   channels.forEach(c => {
     const opt = document.createElement("option");
@@ -122,29 +132,18 @@ function populateFilters(data) {
 }
 
 function applyFilters() {
-
-  let data = window.__RAW_DATA__;
+  let data = window.__RAW_DATA__ || [];
 
   const channel = document.getElementById("filterChannel").value;
   const part = document.getElementById("filterPart").value;
   const from = document.getElementById("filterFrom").value;
   const to = document.getElementById("filterTo").value;
 
-  if (channel) {
-    data = data.filter(d => d["CHANNEL"] === channel);
-  }
+  if (channel) data = data.filter(d => d.channel === channel);
+  if (part) data = data.filter(d => d.part_number === part);
 
-  if (part) {
-    data = data.filter(d => d["Part Number"] === part);
-  }
-
-  if (from) {
-    data = data.filter(d => d["Date"] >= from);
-  }
-
-  if (to) {
-    data = data.filter(d => d["Date"] <= to);
-  }
+  if (from) data = data.filter(d => d.date >= from);
+  if (to) data = data.filter(d => d.date <= to);
 
   recalculateDashboard(data);
 }
@@ -154,15 +153,14 @@ function resetFilters() {
   document.getElementById("filterPart").value = "";
   document.getElementById("filterFrom").value = "";
   document.getElementById("filterTo").value = "";
-  applyFilters();
+  recalculateDashboard(window.__RAW_DATA__);
 }
 
-/* ---------------- RECALCULATE FROM RAW ---------------- */
+/* ---------------- RECALCULATE KPI FROM FILTERED ---------------- */
 
 function recalculateDashboard(data) {
-
-  const totalSales = data.reduce((sum, r) => sum + r["Amount"], 0);
-  const totalQty = data.reduce((sum, r) => sum + r["Qty"], 0);
+  const totalSales = data.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  const totalQty = data.reduce((sum, r) => sum + Number(r.qty || 0), 0);
 
   document.getElementById("totalSales").textContent = totalSales.toFixed(2);
   document.getElementById("totalQty").textContent = totalQty;
@@ -173,7 +171,6 @@ function recalculateDashboard(data) {
 /* ---------------- INITIAL RENDER ---------------- */
 
 function renderAll(kpi, cat, chan, exec, raw) {
-
   document.getElementById("mtdSales").textContent = kpi.mtd_sales ?? 0;
   document.getElementById("totalSales").textContent = kpi.total_sales ?? 0;
   document.getElementById("totalQty").textContent = kpi.total_qty ?? 0;
@@ -190,7 +187,6 @@ function renderAll(kpi, cat, chan, exec, raw) {
 /* ---------------- GENERIC TABLE ---------------- */
 
 function renderTable(tableId, data) {
-
   const table = document.getElementById(tableId);
   if (!table) return;
 
@@ -200,14 +196,14 @@ function renderTable(tableId, data) {
   thead.innerHTML = "";
   tbody.innerHTML = "";
 
-  if (!data.length) return;
+  if (!data || !data.length) return;
 
   const headers = Object.keys(data[0]);
 
   const headRow = document.createElement("tr");
   headers.forEach(h => {
     const th = document.createElement("th");
-    th.textContent = h;
+    th.textContent = h.replaceAll("_", " ").toUpperCase();
     headRow.appendChild(th);
   });
   thead.appendChild(headRow);
