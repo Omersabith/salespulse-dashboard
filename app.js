@@ -75,6 +75,11 @@ async function loadDashboard() {
   const channelData = payload.channel_performance || [];
   const execData = payload.executive_performance || [];
   const rawData = payload.raw_data || [];
+// STORE RAW DATA GLOBALLY
+window.__RAW_DATA__ = rawData;
+
+// POPULATE FILTER DROPDOWNS
+populateFilters(rawData);
 
   /* ---------------- KPI RENDER ---------------- */
 
@@ -149,5 +154,37 @@ function renderTable(tableId, data) {
     });
 
     tbody.appendChild(tr);
+  });
+}
+// 🔽 FILTER POPULATION
+function populateFilters(data) {
+  const channelSelect = document.getElementById("filterChannel");
+  const partSelect = document.getElementById("filterPart");
+
+  // CLEAR OLD OPTIONS (important when reloading)
+  channelSelect.innerHTML = '<option value="ALL">All Channels</option>';
+  partSelect.innerHTML = '<option value="ALL">All Parts</option>';
+
+  // GET UNIQUE VALUES
+  const channels = [...new Set(data.map(d => d.channel).filter(Boolean))];
+  const parts = [...new Set(data.map(d => d.part_number).filter(Boolean))];
+
+  channels.sort();
+  parts.sort();
+
+  // ADD CHANNEL OPTIONS
+  channels.forEach(ch => {
+    const opt = document.createElement("option");
+    opt.value = ch;
+    opt.textContent = ch;
+    channelSelect.appendChild(opt);
+  });
+
+  // ADD PART OPTIONS
+  parts.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    partSelect.appendChild(opt);
   });
 }
