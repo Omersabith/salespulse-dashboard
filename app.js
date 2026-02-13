@@ -1,169 +1,94 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// ===============================
+// 🔗 SUPABASE CONFIG
+// ===============================
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/* ---------------- LOGIN ---------------- */
+// ===============================
+// 📦 GLOBAL DATA STORE
+// ===============================
+let MASTER_DATA = [];
+let FILTERED_DATA = [];
 
-const loginForm = document.getElementById("loginForm");
-const loginContainer = document.getElementById("login-container");
-const dashboard = document.getElementById("dashboard-container");
-const errorMsg = document.getElementById("auth-error");
-
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const email = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    errorMsg.classList.remove("hidden");
-    return;
-  }
-
-  loginContainer.classList.add("hidden");
-  dashboard.classList.remove("hidden");
-
-  loadDashboard();
-});
-
-/* ---------------- SESSION CHECK ---------------- */
-
-async function checkSession() {
-  const { data } = await supabase.auth.getSession();
-
-  if (data.session) {
-    loginContainer.classList.add("hidden");
-    dashboard.classList.remove("hidden");
-    loadDashboard();
-  }
-}
-
-checkSession();
-
-/* ---------------- LOGOUT ---------------- */
-
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await supabase.auth.signOut();
-  location.reload();
-});
-
-/* ---------------- FETCH DATA ---------------- */
-
+// ===============================
+// 🚀 LOAD DASHBOARD
+// ===============================
 async function loadDashboard() {
-  const { data, error } = await supabase
-    .from("salespulse_payload")
-    .select("content")
-    .order("created_at", { ascending: false })
-    .limit(1)
+  const { data, error } = await supabaseClient
+    .from("sales_payload")
+    .select("payload")
     .single();
 
   if (error) {
-    console.error("DATA LOAD ERROR:", error);
+    console.error("❌ Supabase load error:", error);
     return;
   }
 
-  console.log("FULL PAYLOAD FROM SUPABASE:", data);
+  const payload = data.payload;
 
-  const payload = data?.content || {};
+  // KPI
+  renderKPIs(payload.kpi);
 
-  const rawData = payload.raw_data || [];
+  // MASTER DATA
+  MASTER_DATA = payload.raw_data;
+  FILTERED_DATA = [...MASTER_DATA];
 
-  console.log("RAW DATA COUNT:", rawData.length);
+  // STORE RAW FOR DEBUG
+  window.__RAW_DATA__ = MASTER_DATA;
 
-  window.__RAW_DATA__ = rawData;
+  // POPULATE FILTERS
+  populateFilters(payload.filters);
 
-  populateFilters(rawData);
-
-  renderTable("table-raw", rawData);
-
-  updateKPI(rawData);
-
-  document
-    .getElementById("applyFilters")
-    ?.addEventListener("click", applyFilters);
-
-  document.getElementById("resetFilters")?.addEventListener("click", () => {
-    document.getElementById("filterChannel").value = "ALL";
-    document.getElementById("filterPart").value = "ALL";
-    document.getElementById("filterStart").value = "";
-    document.getElementById("filterEnd").value = "";
-
-    renderTable("table-raw", window.__RAW_DATA__);
-    updateKPI(window.__RAW_DATA__);
-  });
+  // RENDER TABLE
+  renderTable(FILTERED_DATA);
 }
 
-/* ---------------- FILTER LOGIC ---------------- */
+// ===============================
+// 📊 KPI RENDER
+// ===============================
+function renderKPIs(kpi) {
+  document.getElementById("kpiSales").innerText =
+    kpi.total_sales.toLocaleString();
 
-function applyFilters() {
-  const data = window.__RAW_DATA__ || [];
+  document.getElementById("kpiQty").innerText =
+    kpi.total_qty.toLocaleString();
 
-  const channel = document.getElementById("filterChannel").value;
-  const part = document.getElementById("filterPart").value;
-  const startDate = document.getElementById("filterStart").value;
-  const endDate = document.getElementById("filterEnd").value;
+  document.getElementById("kpiMTD").innerText =
+    kpi.mtd_sales.toLocaleString();
 
-  let filtered = data;
+  document.getElementById("kpiGrowth").innerText =
+    kpi.growth_pct.toFixed(2) + "%";
 
-  if (channel !== "ALL") {
-    filtered = filtered.filter((d) => d.channel === channel);
-  }
+  document.getElementById("kpiCategory").innerText =
+    kpi.top_category;
 
-  if (part !== "ALL") {
-    filtered = filtered.filter((d) => d.part_number === part);
-  }
-
-  if (startDate) {
-    filtered = filtered.filter((d) => d.date >= startDate);
-  }
-
-  if (endDate) {
-    filtered = filtered.filter((d) => d.date <= endDate);
-  }
-
-  renderTable("table-raw", filtered);
-  updateKPI(filtered);
+  document.getElementById("kpiChannel").innerText =
+    kpi.best_channel;
 }
 
-/* ---------------- KPI RECALC ---------------- */
-
-function updateKPI(data) {
-  const totalSales = data.reduce((sum, d) => sum + Number(d.amount || 0), 0);
-  const totalQty = data.reduce((sum, d) => sum + Number(d.qty || 0), 0);
-
-  document.getElementById("totalSales").textContent =
-    totalSales.toFixed(2);
-  document.getElementById("totalQty").textContent = totalQty;
-  document.getElementById("mtdSales").textContent =
-    totalSales.toFixed(2);
-}
-
-/* ---------------- FILTER DROPDOWNS ---------------- */
-
-function populateFilters(data) {
+// ===============================
+// 🔽 POPULATE FILTER DROPDOWNS
+// ===============================
+function populateFilters(filters) {
   const channelSelect = document.getElementById("filterChannel");
   const partSelect = document.getElementById("filterPart");
 
-  const channels = [...new Set(data.map((d) => d.channel))].sort();
-  const parts = [...new Set(data.map((d) => d.part_number))].sort();
+  channelSelect.innerHTML = '<option value="">All Channels</option>';
+  partSelect.innerHTML = '<option value="">All Parts</option>';
 
-  channelSelect.innerHTML = '<option value="ALL">All Channels</option>';
-  partSelect.innerHTML = '<option value="ALL">All Parts</option>';
-
-  channels.forEach((c) => {
+  filters.channels.forEach(ch => {
     const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
+    opt.value = ch;
+    opt.textContent = ch;
     channelSelect.appendChild(opt);
   });
 
-  parts.forEach((p) => {
+  // Part numbers come from raw data
+  const partNumbers = [...new Set(MASTER_DATA.map(d => d["Part Number"]))];
+
+  partNumbers.sort().forEach(p => {
     const opt = document.createElement("option");
     opt.value = p;
     opt.textContent = p;
@@ -171,41 +96,68 @@ function populateFilters(data) {
   });
 }
 
-/* ---------------- TABLE RENDER ---------------- */
+// ===============================
+// 🔍 APPLY FILTERS
+// ===============================
+function applyFilters() {
+  const channel = document.getElementById("filterChannel").value;
+  const part = document.getElementById("filterPart").value;
+  const dateFrom = document.getElementById("dateFrom").value;
+  const dateTo = document.getElementById("dateTo").value;
 
-function renderTable(tableId, data) {
-  const table = document.getElementById(tableId);
-  if (!table) return;
+  FILTERED_DATA = MASTER_DATA.filter(row => {
+    const rowDate = row.Date;
 
-  const thead = table.querySelector("thead");
-  const tbody = table.querySelector("tbody");
-
-  thead.innerHTML = "";
-  tbody.innerHTML = "";
-
-  if (!data || data.length === 0) return;
-
-  const headers = Object.keys(data[0]);
-
-  const headRow = document.createElement("tr");
-
-  headers.forEach((h) => {
-    const th = document.createElement("th");
-    th.textContent = h.replaceAll("_", " ").toUpperCase();
-    headRow.appendChild(th);
+    return (
+      (!channel || row.CHANNEL === channel) &&
+      (!part || row["Part Number"] === part) &&
+      (!dateFrom || rowDate >= dateFrom) &&
+      (!dateTo || rowDate <= dateTo)
+    );
   });
 
-  thead.appendChild(headRow);
+  renderTable(FILTERED_DATA);
+}
 
-  data.forEach((row) => {
+// ===============================
+// 📋 TABLE RENDER
+// ===============================
+function renderTable(data) {
+  const tbody = document.getElementById("salesTableBody");
+  tbody.innerHTML = "";
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='8'>No data</td></tr>";
+    return;
+  }
+
+  data.forEach(row => {
     const tr = document.createElement("tr");
 
-    headers.forEach((h) => {
-      const td = document.createElement("td");
-      td.textContent = row[h];
-      tr.appendChild(td);
-    });
+    tr.innerHTML = `
+      <td>${row.Date || ""}</td>
+      <td>${row["Part Number"] || ""}</td>
+      <td>${row.Category || ""}</td>
+      <td>${row["Sub Category"] || ""}</td>
+      <td>${row.CHANNEL || ""}</td>
+      <td>${row["Sales Executive"] || ""}</td>
+      <td>${Number(row.Qty || 0).toLocaleString()}</td>
+      <td>${Number(row.Amount || 0).toLocaleString()}</td>
+    `;
 
     tbody.appendChild(tr);
   });
 }
+
+// ===============================
+// 🔘 EVENT LISTENERS
+// ===============================
+document.getElementById("filterChannel").addEventListener("change", applyFilters);
+document.getElementById("filterPart").addEventListener("change", applyFilters);
+document.getElementById("dateFrom").addEventListener("change", applyFilters);
+document.getElementById("dateTo").addEventListener("change", applyFilters);
+
+// ===============================
+// ▶️ INIT
+// ===============================
+loadDashboard();
