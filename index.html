@@ -49,6 +49,39 @@
     </header>
 
     <!-- KPI CARDS -->
+<!-- FILTER BAR -->
+<section class="filter-bar card">
+
+  <div class="filter-group">
+    <label>Channel</label>
+    <select id="filterChannel">
+      <option value="">All Channels</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>Part Number</label>
+    <select id="filterPart">
+      <option value="">All Parts</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>From</label>
+    <input type="date" id="filterFrom" />
+  </div>
+
+  <div class="filter-group">
+    <label>To</label>
+    <input type="date" id="filterTo" />
+  </div>
+
+  <div class="filter-group">
+    <label>&nbsp;</label>
+    <button id="resetFilters" class="btn-sec">Reset</button>
+  </div>
+
+</section>
     <section class="kpi-container">
 
       <div class="card kpi-card">

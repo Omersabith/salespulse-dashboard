@@ -71,3 +71,23 @@ tr:hover { background: rgba(255,255,255,0.02); }
     body { background: white; color: black; }
     .card { border: 1px solid #ccc; break-inside: avoid; }
 }
+.filter-bar {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+.filter-group select,
+.filter-group input {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
