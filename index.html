@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SalesPulse Dashboard</title>
+  <style>
+    body { font-family: Arial; background:#0f172a; color:white; padding:40px; }
+    .card { background:#1e293b; padding:20px; margin:10px; border-radius:12px; display:inline-block; min-width:200px; }
+    h1 { margin-bottom:30px; }
+    .value { font-size:28px; font-weight:bold; }
+  </style>
+</head>
+<body>
+
+<h1>📊 SalesPulse KPI</h1>
+
+<div class="card">
+  <div>MTD Sales</div>
+  <div class="value" id="mtd_sales">--</div>
+</div>
+
+<div class="card">
+  <div>Total Sales</div>
+  <div class="value" id="total_sales">--</div>
+</div>
+
+<div class="card">
+  <div>Total Qty</div>
+  <div class="value" id="total_qty">--</div>
+</div>
+
+<div class="card">
+  <div>Growth %</div>
+  <div class="value" id="growth_pct">--</div>
+</div>
+
+<div class="card">
+  <div>Best Channel</div>
+  <div class="value" id="best_channel">--</div>
+</div>
+
+<div class="card">
+  <div>Top Category</div>
+  <div class="value" id="top_category">--</div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://iyxpvbvpampykfjffgol.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Q9IcqOv5IU9boMcm5fnG_w_je4xqV46";
+
+async function loadKPI() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/salespulse_payload?select=content&order=created_at.desc&limit=1`,
+    {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`
+      }
+    }
+  );
+
+  const data = await res.json();
+  const kpi = data[0].content.kpi;
+
+  document.getElementById("mtd_sales").innerText = kpi.mtd_sales;
+  document.getElementById("total_sales").innerText = kpi.total_sales;
+  document.getElementById("total_qty").innerText = kpi.total_qty;
+  document.getElementById("growth_pct").innerText = kpi.growth_pct + "%";
+  document.getElementById("best_channel").innerText = kpi.best_channel;
+  document.getElementById("top_category").innerText = kpi.top_category;
+}
+
+loadKPI();
+</script>
+
+</body>
+</html>
