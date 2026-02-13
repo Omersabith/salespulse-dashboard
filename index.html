@@ -1,66 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SalesPulse V5 | Enterprise Analytics</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SalesPulse V5 | Enterprise Analytics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+
+  <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
 
-    <div id="login-container" class="wrapper">
-        <form class="card login-card" id="loginForm">
-            <h2>SalesPulse <span class="highlight">V5</span></h2>
-            <div class="field">
-                <input type="text" id="username" placeholder="User ID" required>
-            </div>
-            <div class="field">
-                <input type="password" id="password" placeholder="Password" required>
-            </div>
-            <button type="submit">Authorize Access</button>
-            <p id="auth-error" class="error hidden">Invalid Security Credentials</p>
-        </form>
-    </div>
+  <!-- ---------------- LOGIN ---------------- -->
 
-    <main id="dashboard-container" class="hidden">
-        <header class="main-nav">
-            <div class="logo">SALESPULSE <span>CORPORATE</span></div>
-            <div class="actions">
-                <button onclick="window.print()" class="btn-sec">Print Report</button>
-                <button id="logoutBtn" class="btn-danger">Logout</button>
-            </div>
-        </header>
+  <div id="login-container" class="wrapper">
+    <form class="card login-card" id="loginForm">
+      <h2>SalesPulse <span class="highlight">V5</span></h2>
 
-        <section class="kpi-container" id="kpi-grid"></section>
+      <div class="field">
+        <input type="email" id="username" placeholder="Email" required />
+      </div>
 
-        <section class="content-grid">
-            <div class="card grid-cat">
-                <h3>Category Performance</h3>
-                <div class="table-wrap"><table id="table-cat"><thead></thead><tbody></tbody></table></div>
-            </div>
-            
-            <div class="card grid-chan">
-                <h3>Channel Performance</h3>
-                <div class="table-wrap"><table id="table-chan"><thead></thead><tbody></tbody></table></div>
-            </div>
+      <div class="field">
+        <input type="password" id="password" placeholder="Password" required />
+      </div>
 
-            <div class="card grid-exec">
-                <h3>Executive Performance</h3>
-                <div class="table-wrap"><table id="table-exec"><thead></thead><tbody></tbody></table></div>
-            </div>
+      <button type="submit">Authorize Access</button>
 
-            <div class="card grid-raw">
-                <h3>Master Data Audit (Recent)</h3>
-                <div class="toolbar">
-                    <input type="text" id="tableSearch" placeholder="Filter records...">
-                </div>
-                <div class="table-wrap"><table id="table-raw"><thead></thead><tbody></tbody></table></div>
-            </div>
-        </section>
-    </main>
+      <p id="auth-error" class="error hidden">
+        Invalid credentials
+      </p>
+    </form>
+  </div>
 
-    <script src="config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="app.js"></script>
+  <!-- ---------------- DASHBOARD ---------------- -->
+
+  <main id="dashboard-container" class="hidden">
+
+    <!-- NAVBAR -->
+    <header class="main-nav">
+      <div class="logo">SALESPULSE <span>CORPORATE</span></div>
+      <div class="actions">
+        <button onclick="window.print()" class="btn-sec">Print Report</button>
+        <button id="logoutBtn" class="btn-danger">Logout</button>
+      </div>
+    </header>
+
+    <!-- KPI CARDS -->
+    <section class="kpi-container">
+
+      <div class="card kpi-card">
+        <h4>MTD Sales</h4>
+        <p id="mtdSales">0</p>
+      </div>
+
+      <div class="card kpi-card">
+        <h4>Total Sales</h4>
+        <p id="totalSales">0</p>
+      </div>
+
+      <div class="card kpi-card">
+        <h4>Total Qty</h4>
+        <p id="totalQty">0</p>
+      </div>
+
+      <div class="card kpi-card">
+        <h4>Growth %</h4>
+        <p id="growth">0%</p>
+      </div>
+
+      <div class="card kpi-card">
+        <h4>Best Channel</h4>
+        <p id="bestChannel">-</p>
+      </div>
+
+      <div class="card kpi-card">
+        <h4>Top Category</h4>
+        <p id="topCategory">-</p>
+      </div>
+
+    </section>
+
+    <!-- TABLE GRID -->
+    <section class="content-grid">
+
+      <!-- CATEGORY -->
+      <div class="card grid-cat">
+        <h3>Category Performance</h3>
+        <div class="table-wrap">
+          <table id="table-cat">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CHANNEL -->
+      <div class="card grid-chan">
+        <h3>Channel Performance</h3>
+        <div class="table-wrap">
+          <table id="table-chan">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- EXECUTIVE -->
+      <div class="card grid-exec">
+        <h3>Executive Performance</h3>
+        <div class="table-wrap">
+          <table id="table-exec">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RAW DATA -->
+      <div class="card grid-raw">
+        <h3>Master Data Audit</h3>
+
+        <div class="toolbar">
+          <input
+            type="text"
+            id="tableSearch"
+            placeholder="Filter records..."
+          />
+        </div>
+
+        <div class="table-wrap">
+          <table id="table-raw">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CHARTS SECTION (READY FOR NEXT STEP) -->
+    <section class="content-grid">
+
+      <div class="card">
+        <h3>Category Sales Chart</h3>
+        <canvas id="categoryChart"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Channel Sales Chart</h3>
+        <canvas id="channelChart"></canvas>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ---------------- SCRIPTS ---------------- -->
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="app.js"></script>
+
+</body>
+</html>
