@@ -1,8 +1,8 @@
 // ===============================
 // 🔗 SUPABASE CONFIG
 // ===============================
-const SUPABASE_URL = "YOUR_SUPABASE_URL";
-const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL = "https://iyxpvbvpampykfjffgol.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Q9IcqOv5IU9boMcm5fnG_w_je4xqV46";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
