@@ -3,7 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ---------------- LOGIN ---------------- */
+let categoryChart;
+let channelChart;
+
+/* LOGIN */
 
 const loginForm = document.getElementById("loginForm");
 const loginContainer = document.getElementById("login-container");
@@ -16,10 +19,7 @@ loginForm.addEventListener("submit", async (e) => {
   const email = document.getElementById("username").value;
   const password = document.getElementById("password").value;
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     errorMsg.classList.remove("hidden");
@@ -32,28 +32,26 @@ loginForm.addEventListener("submit", async (e) => {
   loadDashboard();
 });
 
-/* ---------------- SESSION CHECK ---------------- */
+/* SESSION */
 
 async function checkSession() {
   const { data } = await supabase.auth.getSession();
-
   if (data.session) {
     loginContainer.classList.add("hidden");
     dashboard.classList.remove("hidden");
     loadDashboard();
   }
 }
-
 checkSession();
 
-/* ---------------- LOGOUT ---------------- */
+/* LOGOUT */
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await supabase.auth.signOut();
   location.reload();
 });
 
-/* ---------------- FETCH DATA ---------------- */
+/* LOAD DATA */
 
 async function loadDashboard() {
   const { data, error } = await supabase
@@ -64,69 +62,46 @@ async function loadDashboard() {
     .single();
 
   if (error) {
-    console.error("DATA LOAD ERROR:", error);
+    console.error(error);
     return;
   }
 
   const payload = data.content || {};
-
-  const kpi = payload.kpi || {};
-  const categoryData = payload.category_performance || [];
-  const channelData = payload.channel_performance || [];
-  const execData = payload.executive_performance || [];
   const rawData = payload.raw_data || [];
 
-  // STORE RAW DATA GLOBALLY
   window.__RAW_DATA__ = rawData;
 
-  // POPULATE FILTER DROPDOWNS
   populateFilters(rawData);
-
-  /* ---------------- KPI RENDER ---------------- */
-
-  document.getElementById("mtdSales").textContent = kpi.mtd_sales ?? 0;
-  document.getElementById("totalSales").textContent = kpi.total_sales ?? 0;
-  document.getElementById("totalQty").textContent = kpi.total_qty ?? 0;
-  document.getElementById("growth").textContent =
-    (kpi.growth_pct ?? 0) + "%";
-  document.getElementById("bestChannel").textContent =
-    kpi.best_channel ?? "-";
-  document.getElementById("topCategory").textContent =
-    kpi.top_category ?? "-";
-
-  /* ---------------- TABLE RENDER ---------------- */
-
-  renderTable("table-cat", categoryData);
-  renderTable("table-chan", channelData);
-  renderTable("table-exec", execData);
   renderTable("table-raw", rawData);
+  updateKPI(rawData);
+  buildCharts(rawData);
 
-  /* ---------------- FILTER LISTENERS ---------------- */
+  /* SEARCH */
+  document.getElementById("tableSearch").oninput = function () {
+    const value = this.value.toLowerCase();
+    const rows = document.querySelectorAll("#table-raw tbody tr");
+    rows.forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(value) ? "" : "none";
+    });
+  };
 
-  document.getElementById("filterChannel").addEventListener("change", applyFilters);
-  document.getElementById("filterPart").addEventListener("change", applyFilters);
-  document.getElementById("filterStart").addEventListener("change", applyFilters);
-  document.getElementById("filterEnd").addEventListener("change", applyFilters);
+  /* APPLY BUTTON */
+  document.getElementById("applyFilters").addEventListener("click", applyFilters);
 
-  /* ---------------- RAW TABLE SEARCH ---------------- */
+  /* RESET BUTTON */
+  document.getElementById("resetFilters").addEventListener("click", () => {
+    document.getElementById("filterChannel").value = "ALL";
+    document.getElementById("filterPart").value = "ALL";
+    document.getElementById("filterStart").value = "";
+    document.getElementById("filterEnd").value = "";
 
-  const searchInput = document.getElementById("tableSearch");
-
-  if (searchInput) {
-    searchInput.oninput = function () {
-      const value = this.value.toLowerCase();
-      const rows = document.querySelectorAll("#table-raw tbody tr");
-
-      rows.forEach((row) => {
-        row.style.display = row.textContent.toLowerCase().includes(value)
-          ? ""
-          : "none";
-      });
-    };
-  }
+    renderTable("table-raw", rawData);
+    updateKPI(rawData);
+    buildCharts(rawData);
+  });
 }
 
-/* ---------------- GENERIC TABLE RENDER FUNCTION ---------------- */
+/* TABLE RENDER */
 
 function renderTable(tableId, data) {
   const table = document.getElementById(tableId);
@@ -138,34 +113,30 @@ function renderTable(tableId, data) {
   thead.innerHTML = "";
   tbody.innerHTML = "";
 
-  if (!data || data.length === 0) return;
+  if (!data.length) return;
 
   const headers = Object.keys(data[0]);
 
-  // HEADER
   const headRow = document.createElement("tr");
-  headers.forEach((h) => {
+  headers.forEach(h => {
     const th = document.createElement("th");
-    th.textContent = h.replaceAll("_", " ").toUpperCase();
+    th.textContent = h.toUpperCase();
     headRow.appendChild(th);
   });
   thead.appendChild(headRow);
 
-  // BODY
-  data.forEach((row) => {
+  data.forEach(row => {
     const tr = document.createElement("tr");
-
-    headers.forEach((h) => {
+    headers.forEach(h => {
       const td = document.createElement("td");
       td.textContent = row[h];
       tr.appendChild(td);
     });
-
     tbody.appendChild(tr);
   });
 }
 
-/* ---------------- FILTER DROPDOWN POPULATION ---------------- */
+/* FILTER DROPDOWNS */
 
 function populateFilters(data) {
   const channelSelect = document.getElementById("filterChannel");
@@ -175,56 +146,40 @@ function populateFilters(data) {
   const parts = [...new Set(data.map(d => d.part_number))].sort();
 
   channelSelect.innerHTML = '<option value="ALL">All Channels</option>';
-  partSelect.innerHTML = '<option value="ALL">All Part Numbers</option>';
+  partSelect.innerHTML = '<option value="ALL">All Parts</option>';
 
   channels.forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
-    channelSelect.appendChild(opt);
+    channelSelect.innerHTML += `<option value="${c}">${c}</option>`;
   });
 
   parts.forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = p;
-    opt.textContent = p;
-    partSelect.appendChild(opt);
+    partSelect.innerHTML += `<option value="${p}">${p}</option>`;
   });
 }
 
-/* ---------------- APPLY FILTERS ---------------- */
+/* APPLY FILTERS */
 
 function applyFilters() {
-  const data = window.__RAW_DATA__ || [];
+  const data = window.__RAW_DATA__;
 
   const channel = document.getElementById("filterChannel").value;
   const part = document.getElementById("filterPart").value;
-  const startDate = document.getElementById("filterStart").value;
-  const endDate = document.getElementById("filterEnd").value;
+  const start = document.getElementById("filterStart").value;
+  const end = document.getElementById("filterEnd").value;
 
   let filtered = data;
 
-  if (channel !== "ALL") {
-    filtered = filtered.filter(d => d.channel === channel);
-  }
-
-  if (part !== "ALL") {
-    filtered = filtered.filter(d => d.part_number === part);
-  }
-
-  if (startDate) {
-    filtered = filtered.filter(d => d.date >= startDate);
-  }
-
-  if (endDate) {
-    filtered = filtered.filter(d => d.date <= endDate);
-  }
+  if (channel !== "ALL") filtered = filtered.filter(d => d.channel === channel);
+  if (part !== "ALL") filtered = filtered.filter(d => d.part_number === part);
+  if (start) filtered = filtered.filter(d => d.date >= start);
+  if (end) filtered = filtered.filter(d => d.date <= end);
 
   renderTable("table-raw", filtered);
   updateKPI(filtered);
+  buildCharts(filtered);
 }
 
-/* ---------------- KPI RECALCULATION ---------------- */
+/* KPI */
 
 function updateKPI(data) {
   const totalSales = data.reduce((sum, d) => sum + Number(d.amount || 0), 0);
@@ -233,4 +188,41 @@ function updateKPI(data) {
   document.getElementById("totalSales").textContent = totalSales.toFixed(2);
   document.getElementById("totalQty").textContent = totalQty;
   document.getElementById("mtdSales").textContent = totalSales.toFixed(2);
+}
+
+/* CHARTS */
+
+function buildCharts(data) {
+  const categoryMap = {};
+  const channelMap = {};
+
+  data.forEach(d => {
+    categoryMap[d.category] = (categoryMap[d.category] || 0) + Number(d.amount || 0);
+    channelMap[d.channel] = (channelMap[d.channel] || 0) + Number(d.amount || 0);
+  });
+
+  const categoryLabels = Object.keys(categoryMap);
+  const categoryValues = Object.values(categoryMap);
+
+  const channelLabels = Object.keys(channelMap);
+  const channelValues = Object.values(channelMap);
+
+  if (categoryChart) categoryChart.destroy();
+  if (channelChart) channelChart.destroy();
+
+  categoryChart = new Chart(document.getElementById("categoryChart"), {
+    type: "bar",
+    data: {
+      labels: categoryLabels,
+      datasets: [{ label: "Sales", data: categoryValues }]
+    }
+  });
+
+  channelChart = new Chart(document.getElementById("channelChart"), {
+    type: "bar",
+    data: {
+      labels: channelLabels,
+      datasets: [{ label: "Sales", data: channelValues }]
+    }
+  });
 }

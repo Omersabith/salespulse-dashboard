@@ -7,14 +7,12 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
-
   <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
 
-  <!-- ---------------- LOGIN ---------------- -->
-
+  <!-- LOGIN -->
   <div id="login-container" class="wrapper">
     <form class="card login-card" id="loginForm">
       <h2>SalesPulse <span class="highlight">V5</span></h2>
@@ -35,11 +33,9 @@
     </form>
   </div>
 
-  <!-- ---------------- DASHBOARD ---------------- -->
-
+  <!-- DASHBOARD -->
   <main id="dashboard-container" class="hidden">
 
-    <!-- NAVBAR -->
     <header class="main-nav">
       <div class="logo">SALESPULSE <span>CORPORATE</span></div>
       <div class="actions">
@@ -48,150 +44,92 @@
       </div>
     </header>
 
-    <!-- KPI CARDS -->
-<!-- FILTER BAR -->
-<section class="filter-bar card">
+    <!-- FILTER BAR -->
+    <section class="filter-bar card">
 
-  <div class="filter-group">
-    <label>Channel</label>
-    <select id="filterChannel">
-      <option value="">All Channels</option>
-    </select>
-  </div>
+      <div class="filter-group">
+        <label>Channel</label>
+        <select id="filterChannel">
+          <option value="ALL">All Channels</option>
+        </select>
+      </div>
 
-  <div class="filter-group">
-    <label>Part Number</label>
-    <select id="filterPart">
-      <option value="">All Parts</option>
-    </select>
-  </div>
+      <div class="filter-group">
+        <label>Part Number</label>
+        <select id="filterPart">
+          <option value="ALL">All Parts</option>
+        </select>
+      </div>
 
-  <div class="filter-group">
-    <label>From</label>
-    <input type="date" id="filterFrom" />
-  </div>
+      <div class="filter-group">
+        <label>From</label>
+        <input type="date" id="filterStart" />
+      </div>
 
-  <div class="filter-group">
-    <label>To</label>
-    <input type="date" id="filterTo" />
-  </div>
+      <div class="filter-group">
+        <label>To</label>
+        <input type="date" id="filterEnd" />
+      </div>
 
-  <div class="filter-group">
-    <label>&nbsp;</label>
-    <button id="resetFilters" class="btn-sec">Reset</button>
-  </div>
+      <div class="filter-group">
+        <label>&nbsp;</label>
+        <button id="applyFilters" class="btn-sec">Apply</button>
+      </div>
 
-</section>
+      <div class="filter-group">
+        <label>&nbsp;</label>
+        <button id="resetFilters" class="btn-sec">Reset</button>
+      </div>
+
+    </section>
+
+    <!-- KPI -->
     <section class="kpi-container">
 
-      <div class="card kpi-card">
-        <h4>MTD Sales</h4>
-        <p id="mtdSales">0</p>
-      </div>
-
-      <div class="card kpi-card">
-        <h4>Total Sales</h4>
-        <p id="totalSales">0</p>
-      </div>
-
-      <div class="card kpi-card">
-        <h4>Total Qty</h4>
-        <p id="totalQty">0</p>
-      </div>
-
-      <div class="card kpi-card">
-        <h4>Growth %</h4>
-        <p id="growth">0%</p>
-      </div>
-
-      <div class="card kpi-card">
-        <h4>Best Channel</h4>
-        <p id="bestChannel">-</p>
-      </div>
-
-      <div class="card kpi-card">
-        <h4>Top Category</h4>
-        <p id="topCategory">-</p>
-      </div>
+      <div class="card kpi-card"><h4>MTD Sales</h4><p id="mtdSales">0</p></div>
+      <div class="card kpi-card"><h4>Total Sales</h4><p id="totalSales">0</p></div>
+      <div class="card kpi-card"><h4>Total Qty</h4><p id="totalQty">0</p></div>
+      <div class="card kpi-card"><h4>Growth %</h4><p id="growth">0%</p></div>
+      <div class="card kpi-card"><h4>Best Channel</h4><p id="bestChannel">-</p></div>
+      <div class="card kpi-card"><h4>Top Category</h4><p id="topCategory">-</p></div>
 
     </section>
 
-    <!-- TABLE GRID -->
+    <!-- TABLES -->
     <section class="content-grid">
 
-      <!-- CATEGORY -->
       <div class="card grid-cat">
         <h3>Category Performance</h3>
-        <div class="table-wrap">
-          <table id="table-cat">
-            <thead></thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div class="table-wrap"><table id="table-cat"><thead></thead><tbody></tbody></table></div>
       </div>
 
-      <!-- CHANNEL -->
       <div class="card grid-chan">
         <h3>Channel Performance</h3>
-        <div class="table-wrap">
-          <table id="table-chan">
-            <thead></thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div class="table-wrap"><table id="table-chan"><thead></thead><tbody></tbody></table></div>
       </div>
 
-      <!-- EXECUTIVE -->
       <div class="card grid-exec">
         <h3>Executive Performance</h3>
-        <div class="table-wrap">
-          <table id="table-exec">
-            <thead></thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div class="table-wrap"><table id="table-exec"><thead></thead><tbody></tbody></table></div>
       </div>
 
-      <!-- RAW DATA -->
       <div class="card grid-raw">
         <h3>Master Data Audit</h3>
-
         <div class="toolbar">
-          <input
-            type="text"
-            id="tableSearch"
-            placeholder="Filter records..."
-          />
+          <input type="text" id="tableSearch" placeholder="Filter records..." />
         </div>
-
-        <div class="table-wrap">
-          <table id="table-raw">
-            <thead></thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div class="table-wrap"><table id="table-raw"><thead></thead><tbody></tbody></table></div>
       </div>
 
     </section>
 
-    <!-- CHARTS SECTION (READY FOR NEXT STEP) -->
+    <!-- CHARTS -->
     <section class="content-grid">
-
-      <div class="card">
-        <h3>Category Sales Chart</h3>
-        <canvas id="categoryChart"></canvas>
-      </div>
-
-      <div class="card">
-        <h3>Channel Sales Chart</h3>
-        <canvas id="channelChart"></canvas>
-      </div>
-
+      <div class="card"><h3>Category Sales Chart</h3><canvas id="categoryChart"></canvas></div>
+      <div class="card"><h3>Channel Sales Chart</h3><canvas id="channelChart"></canvas></div>
     </section>
 
   </main>
-
-  <!-- ---------------- SCRIPTS ---------------- -->
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="module" src="app.js"></script>
