@@ -75,11 +75,12 @@ async function loadDashboard() {
   const channelData = payload.channel_performance || [];
   const execData = payload.executive_performance || [];
   const rawData = payload.raw_data || [];
-// STORE RAW DATA GLOBALLY
-window.__RAW_DATA__ = rawData;
 
-// POPULATE FILTER DROPDOWNS
-populateFilters(rawData);
+  // STORE RAW DATA GLOBALLY
+  window.__RAW_DATA__ = rawData;
+
+  // POPULATE FILTER DROPDOWNS
+  populateFilters(rawData);
 
   /* ---------------- KPI RENDER ---------------- */
 
@@ -99,6 +100,13 @@ populateFilters(rawData);
   renderTable("table-chan", channelData);
   renderTable("table-exec", execData);
   renderTable("table-raw", rawData);
+
+  /* ---------------- FILTER LISTENERS ---------------- */
+
+  document.getElementById("filterChannel").addEventListener("change", applyFilters);
+  document.getElementById("filterPart").addEventListener("change", applyFilters);
+  document.getElementById("filterStart").addEventListener("change", applyFilters);
+  document.getElementById("filterEnd").addEventListener("change", applyFilters);
 
   /* ---------------- RAW TABLE SEARCH ---------------- */
 
@@ -156,35 +164,73 @@ function renderTable(tableId, data) {
     tbody.appendChild(tr);
   });
 }
-// 🔽 FILTER POPULATION
+
+/* ---------------- FILTER DROPDOWN POPULATION ---------------- */
+
 function populateFilters(data) {
   const channelSelect = document.getElementById("filterChannel");
   const partSelect = document.getElementById("filterPart");
 
-  // CLEAR OLD OPTIONS (important when reloading)
+  const channels = [...new Set(data.map(d => d.channel))].sort();
+  const parts = [...new Set(data.map(d => d.part_number))].sort();
+
   channelSelect.innerHTML = '<option value="ALL">All Channels</option>';
-  partSelect.innerHTML = '<option value="ALL">All Parts</option>';
+  partSelect.innerHTML = '<option value="ALL">All Part Numbers</option>';
 
-  // GET UNIQUE VALUES
-  const channels = [...new Set(data.map(d => d.channel).filter(Boolean))];
-  const parts = [...new Set(data.map(d => d.part_number).filter(Boolean))];
-
-  channels.sort();
-  parts.sort();
-
-  // ADD CHANNEL OPTIONS
-  channels.forEach(ch => {
+  channels.forEach(c => {
     const opt = document.createElement("option");
-    opt.value = ch;
-    opt.textContent = ch;
+    opt.value = c;
+    opt.textContent = c;
     channelSelect.appendChild(opt);
   });
 
-  // ADD PART OPTIONS
   parts.forEach(p => {
     const opt = document.createElement("option");
     opt.value = p;
     opt.textContent = p;
     partSelect.appendChild(opt);
   });
+}
+
+/* ---------------- APPLY FILTERS ---------------- */
+
+function applyFilters() {
+  const data = window.__RAW_DATA__ || [];
+
+  const channel = document.getElementById("filterChannel").value;
+  const part = document.getElementById("filterPart").value;
+  const startDate = document.getElementById("filterStart").value;
+  const endDate = document.getElementById("filterEnd").value;
+
+  let filtered = data;
+
+  if (channel !== "ALL") {
+    filtered = filtered.filter(d => d.channel === channel);
+  }
+
+  if (part !== "ALL") {
+    filtered = filtered.filter(d => d.part_number === part);
+  }
+
+  if (startDate) {
+    filtered = filtered.filter(d => d.date >= startDate);
+  }
+
+  if (endDate) {
+    filtered = filtered.filter(d => d.date <= endDate);
+  }
+
+  renderTable("table-raw", filtered);
+  updateKPI(filtered);
+}
+
+/* ---------------- KPI RECALCULATION ---------------- */
+
+function updateKPI(data) {
+  const totalSales = data.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+  const totalQty = data.reduce((sum, d) => sum + Number(d.qty || 0), 0);
+
+  document.getElementById("totalSales").textContent = totalSales.toFixed(2);
+  document.getElementById("totalQty").textContent = totalQty;
+  document.getElementById("mtdSales").textContent = totalSales.toFixed(2);
 }
