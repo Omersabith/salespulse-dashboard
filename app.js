@@ -1,163 +1,226 @@
-// ===============================
-// 🔗 SUPABASE CONFIG
-// ===============================
-const SUPABASE_URL = "https://iyxpvbvpampykfjffgol.supabase.co";
-const SUPABASE_KEY = "sb_publishable_Q9IcqOv5IU9boMcm5fnG_w_je4xqV46";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===============================
-// 📦 GLOBAL DATA STORE
-// ===============================
-let MASTER_DATA = [];
-let FILTERED_DATA = [];
+/* ---------------- LOGIN ---------------- */
 
-// ===============================
-// 🚀 LOAD DASHBOARD
-// ===============================
-async function loadDashboard() {
-  const { data, error } = await supabaseClient
-    .from("sales_payload")
-    .select("payload")
-    .single();
+const loginForm = document.getElementById("loginForm");
+const loginContainer = document.getElementById("login-container");
+const dashboard = document.getElementById("dashboard-container");
+const errorMsg = document.getElementById("auth-error");
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
   if (error) {
-    console.error("❌ Supabase load error:", error);
+    errorMsg.classList.remove("hidden");
     return;
   }
 
-  const payload = data.payload;
+  loginContainer.classList.add("hidden");
+  dashboard.classList.remove("hidden");
 
-  // KPI
-  renderKPIs(payload.kpi);
+  loadDashboard();
+});
 
-  // MASTER DATA
-  MASTER_DATA = payload.raw_data;
-  FILTERED_DATA = [...MASTER_DATA];
+async function checkSession() {
+  const { data } = await supabase.auth.getSession();
 
-  // STORE RAW FOR DEBUG
-  window.__RAW_DATA__ = MASTER_DATA;
-
-  // POPULATE FILTERS
-  populateFilters(payload.filters);
-
-  // RENDER TABLE
-  renderTable(FILTERED_DATA);
+  if (data.session) {
+    loginContainer.classList.add("hidden");
+    dashboard.classList.remove("hidden");
+    loadDashboard();
+  }
 }
 
-// ===============================
-// 📊 KPI RENDER
-// ===============================
-function renderKPIs(kpi) {
-  document.getElementById("kpiSales").innerText =
-    kpi.total_sales.toLocaleString();
+checkSession();
 
-  document.getElementById("kpiQty").innerText =
-    kpi.total_qty.toLocaleString();
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  location.reload();
+});
 
-  document.getElementById("kpiMTD").innerText =
-    kpi.mtd_sales.toLocaleString();
+/* ---------------- FETCH DATA ---------------- */
 
-  document.getElementById("kpiGrowth").innerText =
-    kpi.growth_pct.toFixed(2) + "%";
+async function loadDashboard() {
 
-  document.getElementById("kpiCategory").innerText =
-    kpi.top_category;
+  const { data, error } = await supabase
+    .from("salespulse_payload")
+    .select("content")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
 
-  document.getElementById("kpiChannel").innerText =
-    kpi.best_channel;
+  if (error) {
+    console.error("DATA LOAD ERROR:", error);
+    return;
+  }
+
+  if (!data || !data.content) {
+    console.error("NO CONTENT FOUND");
+    return;
+  }
+
+  const payload = data.content;
+
+  const kpi = payload.kpi || {};
+  const categoryData = payload.category_performance || [];
+  const channelData = payload.channel_performance || [];
+  const execData = payload.executive_performance || [];
+  const rawData = payload.raw_data || [];
+
+  console.log("FULL PAYLOAD:", payload);
+  console.log("RAW DATA COUNT:", rawData.length);
+
+  window.__RAW_DATA__ = rawData;
+
+  populateFilters(rawData);
+  renderAll(kpi, categoryData, channelData, execData, rawData);
 }
 
-// ===============================
-// 🔽 POPULATE FILTER DROPDOWNS
-// ===============================
-function populateFilters(filters) {
+/* ---------------- FILTERING ---------------- */
+
+function populateFilters(data) {
+
   const channelSelect = document.getElementById("filterChannel");
   const partSelect = document.getElementById("filterPart");
 
   channelSelect.innerHTML = '<option value="">All Channels</option>';
   partSelect.innerHTML = '<option value="">All Parts</option>';
 
-  filters.channels.forEach(ch => {
+  const channels = [...new Set(data.map(d => d["CHANNEL"]))].sort();
+  const parts = [...new Set(data.map(d => d["Part Number"]))].sort();
+
+  channels.forEach(c => {
     const opt = document.createElement("option");
-    opt.value = ch;
-    opt.textContent = ch;
+    opt.value = c;
+    opt.textContent = c;
     channelSelect.appendChild(opt);
   });
 
-  // Part numbers come from raw data
-  const partNumbers = [...new Set(MASTER_DATA.map(d => d["Part Number"]))];
-
-  partNumbers.sort().forEach(p => {
+  parts.forEach(p => {
     const opt = document.createElement("option");
     opt.value = p;
     opt.textContent = p;
     partSelect.appendChild(opt);
   });
+
+  channelSelect.onchange = applyFilters;
+  partSelect.onchange = applyFilters;
+  document.getElementById("filterFrom").onchange = applyFilters;
+  document.getElementById("filterTo").onchange = applyFilters;
+  document.getElementById("resetFilters").onclick = resetFilters;
 }
 
-// ===============================
-// 🔍 APPLY FILTERS
-// ===============================
 function applyFilters() {
+
+  let data = window.__RAW_DATA__;
+
   const channel = document.getElementById("filterChannel").value;
   const part = document.getElementById("filterPart").value;
-  const dateFrom = document.getElementById("dateFrom").value;
-  const dateTo = document.getElementById("dateTo").value;
+  const from = document.getElementById("filterFrom").value;
+  const to = document.getElementById("filterTo").value;
 
-  FILTERED_DATA = MASTER_DATA.filter(row => {
-    const rowDate = row.Date;
+  if (channel) {
+    data = data.filter(d => d["CHANNEL"] === channel);
+  }
 
-    return (
-      (!channel || row.CHANNEL === channel) &&
-      (!part || row["Part Number"] === part) &&
-      (!dateFrom || rowDate >= dateFrom) &&
-      (!dateTo || rowDate <= dateTo)
-    );
-  });
+  if (part) {
+    data = data.filter(d => d["Part Number"] === part);
+  }
 
-  renderTable(FILTERED_DATA);
+  if (from) {
+    data = data.filter(d => d["Date"] >= from);
+  }
+
+  if (to) {
+    data = data.filter(d => d["Date"] <= to);
+  }
+
+  recalculateDashboard(data);
 }
 
-// ===============================
-// 📋 TABLE RENDER
-// ===============================
-function renderTable(data) {
-  const tbody = document.getElementById("salesTableBody");
+function resetFilters() {
+  document.getElementById("filterChannel").value = "";
+  document.getElementById("filterPart").value = "";
+  document.getElementById("filterFrom").value = "";
+  document.getElementById("filterTo").value = "";
+  applyFilters();
+}
+
+/* ---------------- RECALCULATE FROM RAW ---------------- */
+
+function recalculateDashboard(data) {
+
+  const totalSales = data.reduce((sum, r) => sum + r["Amount"], 0);
+  const totalQty = data.reduce((sum, r) => sum + r["Qty"], 0);
+
+  document.getElementById("totalSales").textContent = totalSales.toFixed(2);
+  document.getElementById("totalQty").textContent = totalQty;
+
+  renderTable("table-raw", data);
+}
+
+/* ---------------- INITIAL RENDER ---------------- */
+
+function renderAll(kpi, cat, chan, exec, raw) {
+
+  document.getElementById("mtdSales").textContent = kpi.mtd_sales ?? 0;
+  document.getElementById("totalSales").textContent = kpi.total_sales ?? 0;
+  document.getElementById("totalQty").textContent = kpi.total_qty ?? 0;
+  document.getElementById("growth").textContent = (kpi.growth_pct ?? 0) + "%";
+  document.getElementById("bestChannel").textContent = kpi.best_channel ?? "-";
+  document.getElementById("topCategory").textContent = kpi.top_category ?? "-";
+
+  renderTable("table-cat", cat);
+  renderTable("table-chan", chan);
+  renderTable("table-exec", exec);
+  renderTable("table-raw", raw);
+}
+
+/* ---------------- GENERIC TABLE ---------------- */
+
+function renderTable(tableId, data) {
+
+  const table = document.getElementById(tableId);
+  if (!table) return;
+
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+
+  thead.innerHTML = "";
   tbody.innerHTML = "";
 
-  if (!data || data.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='8'>No data</td></tr>";
-    return;
-  }
+  if (!data.length) return;
+
+  const headers = Object.keys(data[0]);
+
+  const headRow = document.createElement("tr");
+  headers.forEach(h => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
 
   data.forEach(row => {
     const tr = document.createElement("tr");
 
-    tr.innerHTML = `
-      <td>${row.Date || ""}</td>
-      <td>${row["Part Number"] || ""}</td>
-      <td>${row.Category || ""}</td>
-      <td>${row["Sub Category"] || ""}</td>
-      <td>${row.CHANNEL || ""}</td>
-      <td>${row["Sales Executive"] || ""}</td>
-      <td>${Number(row.Qty || 0).toLocaleString()}</td>
-      <td>${Number(row.Amount || 0).toLocaleString()}</td>
-    `;
+    headers.forEach(h => {
+      const td = document.createElement("td");
+      td.textContent = row[h];
+      tr.appendChild(td);
+    });
 
     tbody.appendChild(tr);
   });
 }
-
-// ===============================
-// 🔘 EVENT LISTENERS
-// ===============================
-document.getElementById("filterChannel").addEventListener("change", applyFilters);
-document.getElementById("filterPart").addEventListener("change", applyFilters);
-document.getElementById("dateFrom").addEventListener("change", applyFilters);
-document.getElementById("dateTo").addEventListener("change", applyFilters);
-
-// ===============================
-// ▶️ INIT
-// ===============================
-loadDashboard();
